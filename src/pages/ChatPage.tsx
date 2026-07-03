@@ -143,16 +143,17 @@ export default function ChatPage() {
 
       <div className="flex flex-1 min-h-0 flex-col overflow-hidden pt-20 px-4 pb-4 md:px-6 md:pb-6">
         <div className="mx-auto flex w-full max-w-7xl flex-1 min-h-0 flex-col">
-          <div className="flex min-h-0 flex-1 overflow-hidden rounded-xl border border-[#1f2942]/60 bg-[#0c0f1d]/70 backdrop-blur-md shadow-2xl shadow-black/50">
+          <div className="flex min-h-0 flex-1 overflow-hidden rounded-xl border border-purple-500/20 bg-[#0c0f1d]/70 backdrop-blur-md shadow-2xl shadow-black/50">
             {/* Chat column */}
             <div className="flex flex-1 flex-col overflow-hidden min-w-0">
               {/* Chat header: Back to Tournament | chat title */}
-              <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-[#1f2538] bg-[#0a0d18] px-3 md:px-4">
+              <header className="flex shrink-0 flex-col border-b border-purple-500/20 bg-[#0a0d18] px-3 md:px-4">
+                <div className="flex h-14 items-center justify-between gap-3">
                 <div className="flex min-w-0 flex-1 items-center gap-3">
                   <button
                     type="button"
                     onClick={() => navigate("/")}
-                    className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border-2 border-indigo-500/60 bg-indigo-600/15 px-3 text-sm font-semibold text-indigo-200 transition-colors hover:border-indigo-400 hover:bg-indigo-600 hover:text-white cursor-pointer"
+                    className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-purple-500/30 bg-purple-500/10 px-3 text-sm font-semibold text-purple-200 transition-colors hover:border-purple-400/50 hover:bg-purple-600 hover:text-white cursor-pointer"
                     aria-label="Back to Tournament"
                   >
                     <ArrowLeft className="h-4 w-4 shrink-0" />
@@ -168,7 +169,7 @@ export default function ChatPage() {
                       onClick={() => setIsPlayersExpanded((v) => !v)}
                       className={`flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors cursor-pointer ${
                         isPlayersExpanded
-                          ? "bg-indigo-600/20 text-indigo-300"
+                          ? "bg-purple-600/20 text-purple-300"
                           : "text-gray-400 hover:bg-[#141829] hover:text-white"
                       }`}
                       aria-label="Expand or collapse players list"
@@ -208,7 +209,7 @@ export default function ChatPage() {
                       <MoreVertical className="h-4 w-4" />
                     </button>
                     {activeMenu && (
-                      <div className="absolute right-0 mt-1 w-44 rounded-lg border border-[#1f2942] bg-[#0c0f1d] py-1 shadow-2xl z-50">
+                      <div className="absolute right-0 mt-1 w-44 rounded-lg border border-purple-500/20 bg-[#0c0f1d] py-1 shadow-2xl z-50">
                         <button
                           type="button"
                           onClick={() => {
@@ -233,6 +234,8 @@ export default function ChatPage() {
                     )}
                   </div>
                 </div>
+                </div>
+                <div className="h-0.5 w-full rounded-full bg-gradient-to-r from-purple-500 to-transparent" />
               </header>
 
               <div className="relative flex flex-1 flex-col overflow-hidden min-h-0">
@@ -260,7 +263,7 @@ export default function ChatPage() {
                       if (msg.type === "system") {
                         return (
                           <div key={msg.id} className="flex justify-center my-2">
-                            <span className="rounded-full border border-[#1f2942]/40 bg-[#12162b]/60 px-3 py-1 text-[11px] text-gray-400">
+                            <span className="rounded-full border border-[#1f2942] bg-[#12162b]/60 px-3 py-1 text-[11px] text-gray-400">
                               {msg.content}
                             </span>
                           </div>
@@ -276,7 +279,7 @@ export default function ChatPage() {
                             <img
                               src={msg.senderAvatarUrl}
                               alt={msg.senderName}
-                              className="h-7 w-7 shrink-0 rounded-full ring-1 ring-indigo-500/30 object-cover"
+                              className="h-7 w-7 shrink-0 rounded-full ring-1 ring-purple-500/30 object-cover"
                             />
                           )}
                           <div
@@ -290,8 +293,8 @@ export default function ChatPage() {
                             <div
                               className={`rounded-2xl px-3.5 py-2 text-sm ${
                                 isOwn
-                                  ? "bg-indigo-600 text-white rounded-br-sm"
-                                  : "border border-[#1f2942]/50 bg-[#13182d] text-gray-100 rounded-bl-sm"
+                                  ? "bg-purple-600 text-white rounded-br-sm"
+                                  : "border border-purple-500/25 bg-gray-900/70 text-gray-100 rounded-bl-sm"
                               }`}
                             >
                               {msg.type === "image" ? (
@@ -317,7 +320,7 @@ export default function ChatPage() {
                 </div>
 
                 {/* Input */}
-                <div className="shrink-0 border-t border-[#1f2538]/80 bg-[#0c0f1d]/50 p-3">
+                <div className="shrink-0 border-t border-purple-500/20 bg-[#0c0f1d]/50 p-3">
                   {showQuickReplies && (
                     <div className="mb-2 flex gap-1.5">
                       {QUICK_REPLIES.map((pill) => (
@@ -325,7 +328,7 @@ export default function ChatPage() {
                           key={pill}
                           type="button"
                           onClick={() => handleQuickReply(pill)}
-                          className="rounded-full border border-[#1f2942] bg-[#12162b] px-3 py-0.5 text-xs font-semibold text-gray-300 transition-colors hover:border-indigo-500 hover:text-white cursor-pointer"
+                          className="rounded-full border border-purple-500/25 bg-[#12162b] px-3 py-0.5 text-xs font-semibold text-gray-300 transition-colors hover:border-purple-400 hover:text-purple-200 cursor-pointer"
                         >
                           {pill}
                         </button>
@@ -333,13 +336,13 @@ export default function ChatPage() {
                     </div>
                   )}
 
-                  <div className="flex items-end gap-2 rounded-xl border border-[#1f2942] bg-[#090b14]/80 p-1.5 focus-within:border-indigo-500/70 transition-colors">
+                  <div className="flex items-end gap-2 rounded-xl border border-purple-500/25 bg-gray-900/50 p-1.5 focus-within:border-purple-400/50 transition-colors">
                     <button
                       type="button"
                       onClick={() => setShowQuickReplies((v) => !v)}
                       className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors cursor-pointer ${
                         showQuickReplies
-                          ? "bg-indigo-600/20 text-indigo-300"
+                          ? "bg-purple-600/20 text-purple-300"
                           : "text-gray-500 hover:text-gray-300"
                       }`}
                       aria-label="Quick replies"
@@ -367,7 +370,7 @@ export default function ChatPage() {
                       disabled={!inputText.trim()}
                       className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all cursor-pointer ${
                         inputText.trim()
-                          ? "bg-indigo-600 text-white hover:bg-indigo-500"
+                          ? "bg-purple-600 text-white hover:bg-purple-500"
                           : "bg-[#12162b] text-gray-600 cursor-not-allowed"
                       }`}
                       aria-label="Send message"

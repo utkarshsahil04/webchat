@@ -22,7 +22,7 @@ function StatusDot({ isOnline }: { isOnline: boolean }) {
 function PlayerChip({ player }: { player: Participant }) {
   return (
     <div
-      className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#1f2942]/60 bg-[#0c0f1d]/80 px-2.5 py-1"
+      className="flex shrink-0 items-center gap-1.5 rounded-lg border border-purple-500/25 bg-gray-900/70 px-2.5 py-1"
       title={`${player.name} — ${player.isOnline ? "Online" : "Offline"}`}
     >
       <StatusDot isOnline={player.isOnline} />
@@ -30,7 +30,7 @@ function PlayerChip({ player }: { player: Participant }) {
         {player.name}
       </span>
       {player.isCurrentUser && (
-        <span className="text-[9px] font-bold uppercase text-indigo-400">You</span>
+        <span className="text-[9px] font-bold uppercase text-purple-300">You</span>
       )}
     </div>
   )
@@ -68,11 +68,11 @@ export default function ConnectedPlayersBar({
   )
 
   return (
-    <div className="border-b border-[#1f2538]/80 bg-[#090b14]/30 shrink-0">
+    <div className="border-b border-purple-500/20 bg-[#090b14]/30 shrink-0">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-[#12162b]/30 cursor-pointer"
+        className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-purple-500/5 cursor-pointer"
         aria-expanded={expanded}
       >
         <div className="flex-1 min-w-0">

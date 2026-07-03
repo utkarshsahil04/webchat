@@ -14,12 +14,12 @@ export default function ConnectedPlayersStrip({ participants }: ConnectedPlayers
   )
 
   return (
-    <div className="shrink-0 border-b border-[#1f2538]/80 bg-[#090b14]/30 px-4 py-2">
+    <div className="shrink-0 border-b border-purple-500/20 bg-[#090b14]/30 px-4 py-2">
       <div className="flex gap-2 overflow-x-auto scrollbar-none">
         {sorted.map((player) => (
           <div
             key={player.id}
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#1f2942]/60 bg-[#0c0f1d]/80 px-2.5 py-1"
+            className="flex shrink-0 items-center gap-1.5 rounded-lg border border-purple-500/25 bg-gray-900/70 px-2.5 py-1"
             title={`${player.name} — ${player.isOnline ? "Online" : "Offline"}`}
           >
             <span
