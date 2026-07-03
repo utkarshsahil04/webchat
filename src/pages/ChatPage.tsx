@@ -2,14 +2,12 @@ import { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   ArrowLeft,
-  Megaphone,
-  Swords,
-  Trophy,
   MoreVertical,
-  Paperclip,
   Send,
   PanelRight,
   X,
+  SmilePlus,
+  Users,
 } from "lucide-react"
 import { mockChats } from "../data/mockChatData"
 import { currentUser } from "../data/tournamentPlayers"
@@ -20,18 +18,24 @@ import {
   getAutoExpandNodeIds,
 } from "../data/chatNavigatorMock"
 import ConnectedPlayersBar from "../components/ConnectedPlayersBar"
+import ConnectedPlayersStrip from "../components/ConnectedPlayersStrip"
 import ChatNavigatorSidebar from "../components/ChatNavigatorSidebar"
-import ChatBreadcrumb from "../components/ChatBreadcrumb"
+import Header from "../components/Header"
+import { getChatHeaderTitle } from "../lib/chatHeader"
+import {
+  isChatPresenceModeA,
+  shouldDefaultExpandPlayers,
+} from "../config/chatPresenceUi"
 import type { ChatChannel, Message } from "../types/chat"
 
 const visibleTree = getVisibleNavigatorTree(mockTournamentChatTree)
+const QUICK_REPLIES = ["GG", "WP", "GLHF"]
+const usePresenceModeA = isChatPresenceModeA()
 
 function loadExpandedNodes(): Set<string> {
   try {
     const stored = localStorage.getItem("chat-nav-expanded")
-    if (stored) {
-      return new Set(JSON.parse(stored) as string[])
-    }
+    if (stored) return new Set(JSON.parse(stored) as string[])
   } catch {
     // ignore
   }
@@ -44,6 +48,13 @@ export default function ChatPage() {
   const [activeChannelId, setActiveChannelId] = useState<string>("tournament")
   const [inputText, setInputText] = useState<string>("")
   const [isNavigatorOpen, setIsNavigatorOpen] = useState<boolean>(false)
+  const [isPlayersExpanded, setIsPlayersExpanded] = useState<boolean>(() =>
+    shouldDefaultExpandPlayers(
+      mockChats.find((c) => c.id === "tournament")?.isLobby ?? true,
+      mockChats.find((c) => c.id === "tournament")?.participants.length ?? 0
+    )
+  )
+  const [showQuickReplies, setShowQuickReplies] = useState<boolean>(false)
   const [activeMenu, setActiveMenu] = useState<boolean>(false)
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(loadExpandedNodes)
 
@@ -56,12 +67,16 @@ export default function ChatPage() {
     [activeChannelId]
   )
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }
+  const chatTitle = useMemo(
+    () =>
+      getChatHeaderTitle(activeChannel.isLobby, activeChannel.name, breadcrumbSegments),
+    [activeChannel.isLobby, activeChannel.name, breadcrumbSegments]
+  )
+
+  const onlineCount = activeChannel.participants.filter((p) => p.isOnline).length
 
   useEffect(() => {
-    scrollToBottom()
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [activeChannelId, activeChannel.messages])
 
   useEffect(() => {
@@ -71,7 +86,13 @@ export default function ChatPage() {
       autoIds.forEach((id) => next.add(id))
       return next
     })
-  }, [activeChannelId])
+    setIsPlayersExpanded(
+      shouldDefaultExpandPlayers(
+        activeChannel.isLobby ?? false,
+        activeChannel.participants.length
+      )
+    )
+  }, [activeChannelId, activeChannel.isLobby, activeChannel.participants.length])
 
   useEffect(() => {
     localStorage.setItem("chat-nav-expanded", JSON.stringify([...expandedNodes]))
@@ -80,11 +101,8 @@ export default function ChatPage() {
   const handleToggleNode = useCallback((nodeId: string) => {
     setExpandedNodes((prev) => {
       const next = new Set(prev)
-      if (next.has(nodeId)) {
-        next.delete(nodeId)
-      } else {
-        next.add(nodeId)
-      }
+      if (next.has(nodeId)) next.delete(nodeId)
+      else next.add(nodeId)
       return next
     })
   }, [])
@@ -106,280 +124,301 @@ export default function ChatPage() {
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     }
 
-    setChannels((prevChannels) =>
-      prevChannels.map((c) => {
-        if (c.id === activeChannelId) {
-          return {
-            ...c,
-            messages: [...c.messages, newMessage],
-          }
-        }
-        return c
-      })
+    setChannels((prev) =>
+      prev.map((c) =>
+        c.id === activeChannelId ? { ...c, messages: [...c.messages, newMessage] } : c
+      )
     )
     setInputText("")
+    setShowQuickReplies(false)
   }
 
   const handleQuickReply = (pill: string) => {
-    setInputText((prev) => (prev ? prev + " " + pill : pill))
+    setInputText((prev) => (prev ? `${prev} ${pill}` : pill))
   }
-
-  const renderChannelIcon = (iconType: string, className: string = "h-5 w-5") => {
-    switch (iconType) {
-      case "megaphone":
-        return <Megaphone className={`${className} text-purple-400`} />
-      case "swords":
-        return <Swords className={`${className} text-indigo-400`} />
-      case "trophy":
-        return <Trophy className={`${className} text-yellow-400`} />
-      default:
-        return <Megaphone className={`${className} text-purple-400`} />
-    }
-  }
-
-  const playersBarLabel = activeChannel.isLobby
-    ? "Tournament Players (16 Teams)"
-    : `${activeChannel.stageName ?? "Match"} · ${activeChannel.name}`
 
   return (
-    <div className="flex h-screen bg-[#080a12] text-white overflow-hidden">
-      {/* Left: Chat column (header + messages + input) */}
-      <div className="flex flex-1 flex-col overflow-hidden min-w-0">
-        <header className="flex min-h-16 items-center justify-between border-b border-[#1f2538] bg-[#0c0f1d] px-4 py-2 md:px-6 z-10 shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
-          <button
-            onClick={() => navigate("/")}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#1f2942] bg-[#0c0f1d] hover:bg-[#141829] text-gray-400 hover:text-white transition-all cursor-pointer"
-          >
-            <ArrowLeft className="h-4.5 w-4.5" />
-          </button>
+    <div className="flex h-screen flex-col bg-[#080a12] text-white overflow-hidden">
+      <Header />
 
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#141829] border border-[#1f2942]">
-            {renderChannelIcon(activeChannel.iconType)}
-          </div>
+      <div className="flex flex-1 min-h-0 flex-col overflow-hidden pt-20 px-4 pb-4 md:px-6 md:pb-6">
+        <div className="mx-auto flex w-full max-w-7xl flex-1 min-h-0 flex-col">
+          <div className="flex min-h-0 flex-1 overflow-hidden rounded-xl border border-[#1f2942]/60 bg-[#0c0f1d]/70 backdrop-blur-md shadow-2xl shadow-black/50">
+            {/* Chat column */}
+            <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+              {/* Chat header: Back to Tournament | chat title */}
+              <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-[#1f2538] bg-[#0a0d18] px-3 md:px-4">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => navigate("/")}
+                    className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border-2 border-indigo-500/60 bg-indigo-600/15 px-3 text-sm font-semibold text-indigo-200 transition-colors hover:border-indigo-400 hover:bg-indigo-600 hover:text-white cursor-pointer"
+                    aria-label="Back to Tournament"
+                  >
+                    <ArrowLeft className="h-4 w-4 shrink-0" />
+                    Back to Tournament
+                  </button>
+                  <h1 className="truncate text-base font-semibold text-white">{chatTitle}</h1>
+                </div>
 
-          <div className="text-left min-w-0">
-            <h1 className="text-sm font-bold text-white leading-tight truncate">
-              {mockTournamentChatTree.tournamentName}
-            </h1>
-            <p className="text-xs text-gray-400 truncate">{activeChannel.subtitle}</p>
-            <ChatBreadcrumb segments={breadcrumbSegments} />
-          </div>
-        </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  {usePresenceModeA && (
+                    <button
+                      type="button"
+                      onClick={() => setIsPlayersExpanded((v) => !v)}
+                      className={`flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors cursor-pointer ${
+                        isPlayersExpanded
+                          ? "bg-indigo-600/20 text-indigo-300"
+                          : "text-gray-400 hover:bg-[#141829] hover:text-white"
+                      }`}
+                      aria-label="Expand or collapse players list"
+                      aria-expanded={isPlayersExpanded}
+                    >
+                      <Users className="h-4 w-4" />
+                      <span className="text-emerald-400">{onlineCount}</span>
+                    </button>
+                  )}
 
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={() => setIsNavigatorOpen(!isNavigatorOpen)}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#1f2942] bg-[#0c0f1d] hover:bg-[#141829] text-gray-400 hover:text-white lg:hidden transition-all cursor-pointer"
-            aria-label="Open chat navigator"
-          >
-            <PanelRight className="h-4.5 w-4.5" />
-          </button>
-
-          <div className="relative">
-            <button
-              onClick={() => setActiveMenu(!activeMenu)}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#1f2942] bg-[#0c0f1d] hover:bg-[#141829] text-gray-400 hover:text-white transition-all cursor-pointer"
-            >
-              <MoreVertical className="h-4.5 w-4.5" />
-            </button>
-
-            {activeMenu && (
-              <div className="absolute right-0 mt-2 w-48 rounded-lg border border-[#1f2942] bg-[#0c0f1d] py-1 shadow-2xl z-50">
-                <button
-                  onClick={() => {
-                    setActiveMenu(false)
-                    alert("Chat notification settings updated!")
-                  }}
-                  className="w-full px-4 py-2 text-left text-xs hover:bg-[#141829] transition-colors"
-                >
-                  Mute Notifications
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveMenu(false)
-                    alert("Chat logs cleared locally.")
-                  }}
-                  className="w-full px-4 py-2 text-left text-xs hover:bg-[#141829] transition-colors text-red-400"
-                >
-                  Clear Chat Logs
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-        </header>
-
-        <div className="flex flex-1 flex-col overflow-hidden relative min-h-0">
-          <ConnectedPlayersBar
-            participants={activeChannel.participants}
-            label={playersBarLabel}
-          />
-
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-radial from-[#0c0f1d] to-[#080a12]">
-            {activeChannel.messages.map((msg) => {
-              const isOwn = msg.senderId === "me"
-
-              if (msg.type === "system") {
-                return (
-                  <div key={msg.id} className="flex justify-center my-3">
-                    <span className="rounded-full border border-[#1f2942]/50 bg-[#12162b]/80 px-3.5 py-1 text-[11px] font-semibold tracking-wide text-gray-400 shadow-sm">
-                      {msg.content}
-                    </span>
-                  </div>
-                )
-              }
-
-              return (
-                <div
-                  key={msg.id}
-                  className={`flex items-end gap-2.5 text-left ${isOwn ? "justify-end" : "justify-start"}`}
-                >
-                  {!isOwn && (
-                    <div className="h-8.5 w-8.5 overflow-hidden rounded-full ring-2 ring-indigo-500/30 shrink-0">
-                      <img
-                        src={msg.senderAvatarUrl}
-                        alt={msg.senderName}
-                        className="h-full w-full object-cover"
-                      />
+                  {!usePresenceModeA && (
+                    <div
+                      className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-gray-400"
+                      aria-label="Players online"
+                    >
+                      <Users className="h-4 w-4" />
+                      <span className="text-emerald-400">{onlineCount}</span>
                     </div>
                   )}
 
-                  <div className={`max-w-[70%] flex flex-col ${isOwn ? "items-end" : "items-start"}`}>
-                    {!isOwn && (
-                      <span className="text-[10px] font-bold text-gray-400 mb-1 ml-1">
-                        {msg.senderName}
-                      </span>
-                    )}
+                  <button
+                    type="button"
+                    onClick={() => setIsNavigatorOpen(true)}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-[#141829] hover:text-white lg:hidden cursor-pointer"
+                    aria-label="Open chat navigator"
+                  >
+                    <PanelRight className="h-4 w-4" />
+                  </button>
 
-                    <div
-                      className={`rounded-2xl px-4 py-2.5 text-sm shadow-md transition-all ${
-                        isOwn
-                          ? "bg-indigo-600 text-white rounded-br-none"
-                          : "bg-[#13182d] border border-[#1f2942]/70 text-gray-100 rounded-bl-none"
-                      }`}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setActiveMenu(!activeMenu)}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-[#141829] hover:text-white cursor-pointer"
+                      aria-label="Chat options"
                     >
-                      {msg.type === "image" ? (
-                        <div className="space-y-1.5">
-                          <p className="leading-relaxed">{msg.content}</p>
-                          <div className="overflow-hidden rounded-lg border border-white/10 max-w-full">
+                      <MoreVertical className="h-4 w-4" />
+                    </button>
+                    {activeMenu && (
+                      <div className="absolute right-0 mt-1 w-44 rounded-lg border border-[#1f2942] bg-[#0c0f1d] py-1 shadow-2xl z-50">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveMenu(false)
+                            alert("Notifications muted for this chat.")
+                          }}
+                          className="w-full px-3 py-2 text-left text-xs hover:bg-[#141829] transition-colors"
+                        >
+                          Mute notifications
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveMenu(false)
+                            alert("Chat cleared locally.")
+                          }}
+                          className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-[#141829] transition-colors"
+                        >
+                          Clear chat
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </header>
+
+              <div className="relative flex flex-1 flex-col overflow-hidden min-h-0">
+                {usePresenceModeA ? (
+                  <ConnectedPlayersBar
+                    participants={activeChannel.participants}
+                    isLobby={activeChannel.isLobby}
+                    expanded={isPlayersExpanded}
+                    onExpandedChange={setIsPlayersExpanded}
+                  />
+                ) : (
+                  <ConnectedPlayersStrip participants={activeChannel.participants} />
+                )}
+
+                {/* Messages */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-[#0c0f1d]/20 to-transparent">
+                  {activeChannel.messages.length === 0 ? (
+                    <div className="flex h-full items-center justify-center">
+                      <p className="text-sm text-gray-500">No messages yet. Say GLHF!</p>
+                    </div>
+                  ) : (
+                    activeChannel.messages.map((msg) => {
+                      const isOwn = msg.senderId === "me"
+
+                      if (msg.type === "system") {
+                        return (
+                          <div key={msg.id} className="flex justify-center my-2">
+                            <span className="rounded-full border border-[#1f2942]/40 bg-[#12162b]/60 px-3 py-1 text-[11px] text-gray-400">
+                              {msg.content}
+                            </span>
+                          </div>
+                        )
+                      }
+
+                      return (
+                        <div
+                          key={msg.id}
+                          className={`flex items-end gap-2 ${isOwn ? "justify-end" : "justify-start"}`}
+                        >
+                          {!isOwn && (
                             <img
-                              src={msg.imageUrl}
-                              alt="Attached media"
-                              className="max-h-48 w-full object-cover cursor-pointer hover:scale-105 transition-all"
+                              src={msg.senderAvatarUrl}
+                              alt={msg.senderName}
+                              className="h-7 w-7 shrink-0 rounded-full ring-1 ring-indigo-500/30 object-cover"
                             />
+                          )}
+                          <div
+                            className={`max-w-[75%] flex flex-col ${isOwn ? "items-end" : "items-start"}`}
+                          >
+                            {!isOwn && (
+                              <span className="mb-0.5 ml-1 text-[10px] font-medium text-gray-500">
+                                {msg.senderName}
+                              </span>
+                            )}
+                            <div
+                              className={`rounded-2xl px-3.5 py-2 text-sm ${
+                                isOwn
+                                  ? "bg-indigo-600 text-white rounded-br-sm"
+                                  : "border border-[#1f2942]/50 bg-[#13182d] text-gray-100 rounded-bl-sm"
+                              }`}
+                            >
+                              {msg.type === "image" ? (
+                                <div className="space-y-1.5">
+                                  <p>{msg.content}</p>
+                                  <img
+                                    src={msg.imageUrl}
+                                    alt="Attachment"
+                                    className="max-h-40 rounded-lg object-cover"
+                                  />
+                                </div>
+                              ) : (
+                                <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                              )}
+                            </div>
+                            <span className="mt-0.5 text-[9px] text-gray-600">{msg.timestamp}</span>
                           </div>
                         </div>
-                      ) : (
-                        <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                      )}
-                    </div>
+                      )
+                    })
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
 
-                    <span className="text-[9px] text-gray-500 mt-1 ml-1 mr-1">
-                      {msg.timestamp}
-                    </span>
-                  </div>
-
-                  {isOwn && (
-                    <div className="h-8.5 w-8.5 overflow-hidden rounded-full ring-2 ring-purple-500/30 shrink-0">
-                      <img
-                        src={msg.senderAvatarUrl}
-                        alt={msg.senderName}
-                        className="h-full w-full object-cover"
-                      />
+                {/* Input */}
+                <div className="shrink-0 border-t border-[#1f2538]/80 bg-[#0c0f1d]/50 p-3">
+                  {showQuickReplies && (
+                    <div className="mb-2 flex gap-1.5">
+                      {QUICK_REPLIES.map((pill) => (
+                        <button
+                          key={pill}
+                          type="button"
+                          onClick={() => handleQuickReply(pill)}
+                          className="rounded-full border border-[#1f2942] bg-[#12162b] px-3 py-0.5 text-xs font-semibold text-gray-300 transition-colors hover:border-indigo-500 hover:text-white cursor-pointer"
+                        >
+                          {pill}
+                        </button>
+                      ))}
                     </div>
                   )}
+
+                  <div className="flex items-end gap-2 rounded-xl border border-[#1f2942] bg-[#090b14]/80 p-1.5 focus-within:border-indigo-500/70 transition-colors">
+                    <button
+                      type="button"
+                      onClick={() => setShowQuickReplies((v) => !v)}
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors cursor-pointer ${
+                        showQuickReplies
+                          ? "bg-indigo-600/20 text-indigo-300"
+                          : "text-gray-500 hover:text-gray-300"
+                      }`}
+                      aria-label="Quick replies"
+                    >
+                      <SmilePlus className="h-4 w-4" />
+                    </button>
+
+                    <textarea
+                      value={inputText}
+                      onChange={(e) => setInputText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault()
+                          handleSendMessage()
+                        }
+                      }}
+                      placeholder="Type a message..."
+                      rows={1}
+                      className="max-h-16 flex-1 resize-none bg-transparent py-1.5 text-sm text-white placeholder-gray-500 outline-none"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={handleSendMessage}
+                      disabled={!inputText.trim()}
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all cursor-pointer ${
+                        inputText.trim()
+                          ? "bg-indigo-600 text-white hover:bg-indigo-500"
+                          : "bg-[#12162b] text-gray-600 cursor-not-allowed"
+                      }`}
+                      aria-label="Send message"
+                    >
+                      <Send className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
-              )
-            })}
-            <div ref={messagesEndRef} />
-          </div>
 
-          <div className="border-t border-[#1f2538] bg-[#0c0f1d] p-3 md:p-4">
-            <div className="flex space-x-1.5 overflow-x-auto scrollbar-none pb-2.5 mb-1.5">
-              {["GG", "WP", "RE?", "NICE", "🔥", "RUSH"].map((pill) => (
-                <button
-                  key={pill}
-                  onClick={() => handleQuickReply(pill)}
-                  className="rounded-full border border-[#1f2942] bg-[#12162b] px-3.5 py-1 text-xs font-bold text-gray-300 transition-all hover:bg-indigo-600 hover:text-white hover:border-indigo-600 cursor-pointer"
-                >
-                  {pill}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex items-end gap-2.5 bg-[#090b14] border border-[#1f2942] rounded-xl p-2 focus-within:border-indigo-500 transition-all">
-              <button className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-[#12162b] transition-all cursor-pointer">
-                <Paperclip className="h-4.5 w-4.5" />
-              </button>
-
-              <textarea
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault()
-                    handleSendMessage()
-                  }
-                }}
-                placeholder="Type a message..."
-                rows={1}
-                className="flex-1 max-h-20 bg-transparent py-1 px-1 text-sm text-white placeholder-gray-500 outline-none resize-none align-bottom scrollbar-none"
-              />
-
-              <button
-                onClick={handleSendMessage}
-                disabled={!inputText.trim()}
-                className={`flex h-9 w-9 items-center justify-center rounded-lg transition-all cursor-pointer ${
-                  inputText.trim()
-                    ? "bg-indigo-600 text-white hover:bg-indigo-500 shadow-md shadow-indigo-600/25"
-                    : "bg-[#12162b] text-gray-500 cursor-not-allowed"
-                }`}
-              >
-                <Send className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Navigator drawer (Mobile/Tablet) */}
-          {isNavigatorOpen && (
-            <div className="lg:hidden absolute inset-0 z-40 bg-black/60 backdrop-blur-sm transition-all flex justify-end">
-              <div className="w-80 h-full flex flex-col border-l border-[#1f2538] animate-slide-in bg-[#0c0f1d]">
-                <div className="flex items-center justify-between border-b border-[#1f2538] bg-[#0c0f1d] px-4 py-3">
-                  <span className="text-base font-bold text-white">Chat Navigator</span>
-                  <button
-                    onClick={() => setIsNavigatorOpen(false)}
-                    className="p-1 hover:bg-[#12162b] rounded-lg text-gray-400 hover:text-white transition-all cursor-pointer"
-                    aria-label="Close chat navigator"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-                <ChatNavigatorSidebar
-                  tree={visibleTree}
-                  activeChatId={activeChannelId}
-                  expandedNodes={expandedNodes}
-                  onToggleNode={handleToggleNode}
-                  onSelectChat={handleSelectChat}
-                  onClose={() => setIsNavigatorOpen(false)}
-                  hideHeader
-                  className="flex-1 overflow-hidden"
-                />
+                {/* Mobile navigator drawer */}
+                {isNavigatorOpen && (
+                  <div className="lg:hidden absolute inset-0 z-40 flex justify-end bg-black/60 backdrop-blur-sm">
+                    <div className="flex h-full w-72 flex-col border-l border-[#1f2538] bg-[#0c0f1d]">
+                      <div className="flex items-center justify-between border-b border-[#1f2538] px-4 py-3">
+                        <span className="text-sm font-bold text-white">Chats</span>
+                        <button
+                          type="button"
+                          onClick={() => setIsNavigatorOpen(false)}
+                          className="rounded-lg p-1 text-gray-400 hover:bg-[#12162b] hover:text-white cursor-pointer"
+                        >
+                          <X className="h-5 w-5" />
+                        </button>
+                      </div>
+                      <ChatNavigatorSidebar
+                        tree={visibleTree}
+                        activeChatId={activeChannelId}
+                        expandedNodes={expandedNodes}
+                        onToggleNode={handleToggleNode}
+                        onSelectChat={handleSelectChat}
+                        onClose={() => setIsNavigatorOpen(false)}
+                        hideHeader
+                        className="flex-1 overflow-hidden"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-          )}
+
+            {/* Desktop navigator */}
+            <ChatNavigatorSidebar
+              tree={visibleTree}
+              activeChatId={activeChannelId}
+              expandedNodes={expandedNodes}
+              onToggleNode={handleToggleNode}
+              onSelectChat={handleSelectChat}
+              className="hidden lg:flex w-72 shrink-0 border-l border-[#1f2538]/80 bg-[#0c0f1d]/40"
+            />
+          </div>
         </div>
       </div>
-
-      {/* Right: Chat Navigator — full height from top */}
-      <ChatNavigatorSidebar
-        tree={visibleTree}
-        activeChatId={activeChannelId}
-        expandedNodes={expandedNodes}
-        onToggleNode={handleToggleNode}
-        onSelectChat={handleSelectChat}
-        className="hidden lg:flex w-80 shrink-0 border-l border-[#1f2538] h-full"
-      />
     </div>
   )
 }

@@ -1,8 +1,13 @@
+import { useState, useEffect, useMemo } from "react"
+import { ChevronDown, ChevronUp } from "lucide-react"
+import { shouldDefaultExpandPlayers } from "../config/chatPresenceUi"
 import type { Participant } from "../types/chat"
 
 interface ConnectedPlayersBarProps {
   participants: Participant[]
-  label?: string
+  isLobby?: boolean
+  expanded?: boolean
+  onExpandedChange?: (expanded: boolean) => void
 }
 
 function StatusDot({ isOnline }: { isOnline: boolean }) {
@@ -14,43 +19,96 @@ function StatusDot({ isOnline }: { isOnline: boolean }) {
   )
 }
 
+function PlayerChip({ player }: { player: Participant }) {
+  return (
+    <div
+      className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#1f2942]/60 bg-[#0c0f1d]/80 px-2.5 py-1"
+      title={`${player.name} — ${player.isOnline ? "Online" : "Offline"}`}
+    >
+      <StatusDot isOnline={player.isOnline} />
+      <span className="max-w-[100px] truncate text-[11px] font-medium text-gray-200">
+        {player.name}
+      </span>
+      {player.isCurrentUser && (
+        <span className="text-[9px] font-bold uppercase text-indigo-400">You</span>
+      )}
+    </div>
+  )
+}
+
 export default function ConnectedPlayersBar({
   participants,
-  label = "Connected Players",
+  isLobby = false,
+  expanded: controlledExpanded,
+  onExpandedChange,
 }: ConnectedPlayersBarProps) {
   const onlineCount = participants.filter((p) => p.isOnline).length
+  const isControlled = controlledExpanded !== undefined
+
+  const [internalExpanded, setInternalExpanded] = useState(() =>
+    shouldDefaultExpandPlayers(isLobby, participants.length)
+  )
+
+  const expanded = isControlled ? controlledExpanded : internalExpanded
+
+  const setExpanded = (value: boolean | ((prev: boolean) => boolean)) => {
+    const next = typeof value === "function" ? value(expanded) : value
+    if (isControlled) onExpandedChange?.(next)
+    else setInternalExpanded(next)
+  }
+
+  useEffect(() => {
+    if (isControlled) return
+    setInternalExpanded(shouldDefaultExpandPlayers(isLobby, participants.length))
+  }, [isLobby, participants.length, isControlled])
+
+  const sortedParticipants = useMemo(
+    () => [...participants].sort((a, b) => Number(b.isOnline) - Number(a.isOnline)),
+    [participants]
+  )
 
   return (
-    <div className="border-b border-[#1f2538] bg-[#090b14]/50 px-4 py-2.5">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-          {label}
-        </span>
-        <span className="text-[11px] font-semibold text-gray-500">
-          <span className="text-emerald-400">{onlineCount}</span> online ·{" "}
-          <span className="text-red-400">{participants.length - onlineCount}</span> offline
-        </span>
-      </div>
-
-      <div className="flex gap-2 overflow-x-auto scrollbar-none pb-0.5">
-        {participants.map((player) => (
-          <div
-            key={player.id}
-            className="flex shrink-0 items-center gap-2 rounded-full border border-[#1f2942]/70 bg-[#0c0f1d] px-3 py-1.5 transition-colors hover:border-[#1f2942] hover:bg-[#12162b]/60"
-            title={`${player.name} — ${player.isOnline ? "Online" : "Offline"}`}
-          >
-            <StatusDot isOnline={player.isOnline} />
-            <span className="max-w-[120px] truncate text-xs font-semibold text-gray-200">
-              {player.name}
-            </span>
-            {player.isCurrentUser && (
-              <span className="rounded bg-indigo-600/25 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-indigo-400">
-                You
+    <div className="border-b border-[#1f2538]/80 bg-[#090b14]/30 shrink-0">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-[#12162b]/30 cursor-pointer"
+        aria-expanded={expanded}
+      >
+        <div className="flex-1 min-w-0">
+          <span className="text-xs font-semibold text-gray-300">
+            <span className="text-emerald-400">{onlineCount}</span> online
+            {participants.length > 0 && (
+              <span className="text-gray-500">
+                {" "}
+                · {participants.length} {isLobby ? "players" : "in match"}
               </span>
             )}
-          </div>
-        ))}
-      </div>
+          </span>
+        </div>
+
+        {expanded ? (
+          <ChevronUp className="h-4 w-4 shrink-0 text-gray-500" />
+        ) : (
+          <ChevronDown className="h-4 w-4 shrink-0 text-gray-500" />
+        )}
+      </button>
+
+      {!expanded && (
+        <div className="flex gap-2 overflow-x-auto px-4 pb-3 scrollbar-none">
+          {sortedParticipants.map((player) => (
+            <PlayerChip key={player.id} player={player} />
+          ))}
+        </div>
+      )}
+
+      {expanded && (
+        <div className="flex flex-wrap gap-2 px-4 pb-3 max-h-28 overflow-y-auto scrollbar-none">
+          {sortedParticipants.map((player) => (
+            <PlayerChip key={player.id} player={player} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

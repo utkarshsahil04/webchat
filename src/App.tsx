@@ -7,11 +7,9 @@ import "./App.css"
 
 function TournamentPage() {
   return (
-    <div className="min-h-screen bg-[#080a12] text-white">
-      {/* Top Navbar */}
+    <div className="min-h-screen bg-[#080a12] text-white pt-16 pb-16 md:pb-0">
       <Header />
 
-      {/* Main Tournament layout */}
       <main className="mx-auto max-w-7xl pb-16">
         {/* Upper section */}
         <TournamentHeader />
