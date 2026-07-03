@@ -21,8 +21,50 @@ const TEAM_NAMES = [
 
 const PLAYER_HANDLES = ["Ace", "Blitz", "Cipher", "Dash"] as const
 
+const REGISTERED_FIRST = [
+  "Chandan",
+  "Amanul",
+  "Priya",
+  "Jordan",
+  "Samir",
+  "Elena",
+  "Marcus",
+  "Yuki",
+  "Omar",
+  "Sofia",
+  "Dev",
+  "Nina",
+  "Kai",
+  "Lara",
+  "Ravi",
+  "Mia",
+] as const
+
+const REGISTERED_LAST = [
+  "Kumar",
+  "Haque",
+  "Shah",
+  "Lee",
+  "Patel",
+  "Rossi",
+  "Chen",
+  "Tanaka",
+  "Hassan",
+  "Martinez",
+  "Singh",
+  "Volkov",
+  "Nakamura",
+  "Costa",
+  "Mehta",
+  "Kim",
+] as const
+
 function isPlayerOnline(teamIndex: number, playerIndex: number): boolean {
   return (teamIndex * 4 + playerIndex) % 3 !== 0
+}
+
+function gameIdFor(teamIndex: number, playerIndex: number): string {
+  return String(55_000_000_000 + teamIndex * 10_000 + playerIndex * 137)
 }
 
 function buildPlayer(
@@ -34,6 +76,12 @@ function buildPlayer(
   const id = `team-${teamIndex}-player-${playerIndex}`
   const handle = PLAYER_HANDLES[playerIndex]
   const shortTeam = teamName.replace(/\s+/g, "")
+  const first = REGISTERED_FIRST[teamIndex % REGISTERED_FIRST.length]
+  const last = REGISTERED_LAST[(teamIndex + playerIndex) % REGISTERED_LAST.length]
+  const registeredName = isCurrentUser ? "Raunak Verma" : `${first} ${last}`
+  const username = isCurrentUser
+    ? "raunak"
+    : `${first}${last}${playerIndex + 1}`.toLowerCase().replace(/\s+/g, "")
 
   return {
     id,
@@ -42,6 +90,10 @@ function buildPlayer(
     isOnline: isPlayerOnline(teamIndex, playerIndex),
     isCurrentUser,
     teamName,
+    registeredName,
+    username,
+    gameId: isCurrentUser ? "55678021073" : gameIdFor(teamIndex, playerIndex),
+    isLeader: playerIndex === 0,
   }
 }
 
@@ -52,6 +104,10 @@ export const currentUser: Participant = {
   isOnline: true,
   isCurrentUser: true,
   teamName: "Nova Squad",
+  registeredName: "Raunak Verma",
+  username: "raunak",
+  gameId: "55678021073",
+  isLeader: true,
 }
 
 /** All players across 16 teams (4 players per team = 64 players). */
@@ -89,6 +145,10 @@ export const tournamentAdmin: Participant = {
   isOnline: true,
   isCurrentUser: false,
   teamName: "Tournament Staff",
+  registeredName: "NOVA Admin",
+  username: "nova_admin",
+  gameId: "10000000001",
+  isLeader: true,
 }
 
 /** Tournament chat includes admin + every registered player. */

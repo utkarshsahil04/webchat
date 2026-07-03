@@ -8,6 +8,9 @@ import {
   X,
   SmilePlus,
   Users,
+  Swords,
+  Megaphone,
+  MessageSquare,
 } from "lucide-react"
 import { mockChats } from "../data/mockChatData"
 import { currentUser } from "../data/tournamentPlayers"
@@ -19,19 +22,19 @@ import {
   clearUnreadForChat,
 } from "../data/chatNavigatorMock"
 import ConnectedPlayersBar from "../components/ConnectedPlayersBar"
-import ConnectedPlayersStrip from "../components/ConnectedPlayersStrip"
 import ChatNavigatorSidebar from "../components/ChatNavigatorSidebar"
 import Header from "../components/Header"
-import { getChatHeaderTitle } from "../lib/chatHeader"
+import { getChatHeaderTitle, getChatHeaderParts } from "../lib/chatHeader"
 import {
-  isChatPresenceModeA,
-  shouldDefaultExpandPlayers,
-} from "../config/chatPresenceUi"
+  loadRecentChatIds,
+  persistRecentChatIds,
+  touchRecent,
+  MESSAGE_WINDOW_SIZE,
+} from "../lib/recentChats"
 import type { ChatChannel, Message, TournamentChatTree } from "../types/chat"
 
 const INITIAL_CHANNEL_ID = "tournament"
 const QUICK_REPLIES = ["GG", "WP", "GLHF"]
-const usePresenceModeA = isChatPresenceModeA()
 
 function initialNavigatorTree(): TournamentChatTree {
   return clearUnreadForChat(
@@ -47,19 +50,17 @@ export default function ChatPage() {
   const [navigatorTree, setNavigatorTree] = useState<TournamentChatTree>(initialNavigatorTree)
   const [inputText, setInputText] = useState<string>("")
   const [isNavigatorOpen, setIsNavigatorOpen] = useState<boolean>(false)
-  const [isPlayersExpanded, setIsPlayersExpanded] = useState<boolean>(() =>
-    shouldDefaultExpandPlayers(
-      mockChats.find((c) => c.id === INITIAL_CHANNEL_ID)?.isLobby ?? true,
-      mockChats.find((c) => c.id === INITIAL_CHANNEL_ID)?.participants.length ?? 0
-    )
-  )
+  const [isPlayersExpanded, setIsPlayersExpanded] = useState(false)
   const [showQuickReplies, setShowQuickReplies] = useState<boolean>(false)
   const [activeMenu, setActiveMenu] = useState<boolean>(false)
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(
     () => new Set(getAutoExpandNodeIds(mockTournamentChatTree, INITIAL_CHANNEL_ID))
   )
+  const [recentIds, setRecentIds] = useState<string[]>(() => loadRecentChatIds(mockChats))
+  const [visibleCount, setVisibleCount] = useState(MESSAGE_WINDOW_SIZE)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
 
   const activeChannel = channels.find((c) => c.id === activeChannelId) || channels[0]
 
@@ -68,17 +69,54 @@ export default function ChatPage() {
     [activeChannelId]
   )
 
-  const chatTitle = useMemo(
+  const chatTitleParts = useMemo(
     () =>
-      getChatHeaderTitle(activeChannel.isLobby, activeChannel.name, breadcrumbSegments),
+      getChatHeaderParts(activeChannel.isLobby, activeChannel.name, breadcrumbSegments),
     [activeChannel.isLobby, activeChannel.name, breadcrumbSegments]
   )
 
+  const recentChats = useMemo(
+    () =>
+      recentIds
+        .map((chatId) => {
+          const channel = channels.find((c) => c.id === chatId)
+          if (!channel) return null
+          const segments = findChatPath(mockTournamentChatTree, chatId)
+          return {
+            chatId,
+            label: getChatHeaderTitle(channel.isLobby, channel.name, segments),
+            isLobby: channel.isLobby,
+          }
+        })
+        .filter((item): item is NonNullable<typeof item> => item != null),
+    [recentIds, channels]
+  )
+
+  const visibleMessages = useMemo(
+    () => activeChannel.messages.slice(-visibleCount),
+    [activeChannel.messages, visibleCount]
+  )
+  const hasOlderMessages = activeChannel.messages.length > visibleCount
+
   const onlineCount = activeChannel.participants.filter((p) => p.isOnline).length
 
+  const scrollToBottom = useCallback((instant = true) => {
+    const container = messagesContainerRef.current
+    if (!container) return
+    const run = () => {
+      container.scrollTop = container.scrollHeight
+    }
+    if (instant) {
+      requestAnimationFrame(run)
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    }
+  }, [])
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [activeChannelId, activeChannel.messages])
+    setVisibleCount(MESSAGE_WINDOW_SIZE)
+    scrollToBottom(true)
+  }, [activeChannelId, scrollToBottom])
 
   useEffect(() => {
     // Only expand tournament + path to active chat (not every stage)
@@ -86,13 +124,12 @@ export default function ChatPage() {
       new Set(getAutoExpandNodeIds(mockTournamentChatTree, activeChannelId))
     )
     setNavigatorTree((prev) => clearUnreadForChat(prev, activeChannelId))
-    setIsPlayersExpanded(
-      shouldDefaultExpandPlayers(
-        activeChannel.isLobby ?? false,
-        activeChannel.participants.length
-      )
-    )
+    setIsPlayersExpanded(false)
   }, [activeChannelId, activeChannel.isLobby, activeChannel.participants.length])
+
+  useEffect(() => {
+    persistRecentChatIds(recentIds)
+  }, [recentIds])
 
   const handleToggleNode = useCallback((nodeId: string) => {
     setExpandedNodes((prev) => {
@@ -125,8 +162,22 @@ export default function ChatPage() {
         c.id === activeChannelId ? { ...c, messages: [...c.messages, newMessage] } : c
       )
     )
+    setRecentIds((prev) => touchRecent(activeChannelId, prev))
     setInputText("")
     setShowQuickReplies(false)
+    requestAnimationFrame(() => scrollToBottom(true))
+  }
+
+  const handleLoadEarlier = () => {
+    const container = messagesContainerRef.current
+    const prevHeight = container?.scrollHeight ?? 0
+    setVisibleCount((c) => c + MESSAGE_WINDOW_SIZE)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!container) return
+        container.scrollTop = container.scrollHeight - prevHeight
+      })
+    })
   }
 
   const handleQuickReply = (pill: string) => {
@@ -144,7 +195,7 @@ export default function ChatPage() {
             <div className="flex flex-1 flex-col overflow-hidden min-w-0">
               {/* Chat header: Back to Tournament | chat title */}
               <header className="flex shrink-0 flex-col border-b border-purple-500/20 bg-[#0a0d18] px-3 md:px-4">
-                <div className="flex h-14 items-center justify-between gap-3">
+                <div className="flex min-h-14 items-center justify-between gap-3 py-2">
                 <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
                   <button
                     type="button"
@@ -155,38 +206,48 @@ export default function ChatPage() {
                     <ArrowLeft className="h-4 w-4 shrink-0" />
                     <span className="hidden sm:inline">Back to Tournament</span>
                   </button>
-                  <h1 className="min-w-0 flex-1 truncate text-sm font-semibold text-white sm:text-base">
-                    {chatTitle}
+                  <h1 className="flex min-w-0 flex-1 items-center gap-2">
+                    <span
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                        chatTitleParts.isLobby
+                          ? "bg-purple-600/25 text-purple-300"
+                          : "bg-gradient-to-br from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-900/40"
+                      }`}
+                    >
+                      {chatTitleParts.isLobby ? (
+                        <Megaphone className="h-4 w-4" />
+                      ) : (
+                        <Swords className="h-4 w-4" />
+                      )}
+                    </span>
+                    <span className="min-w-0 truncate">
+                      <span className="block truncate text-base font-extrabold tracking-tight text-white sm:text-lg">
+                        {chatTitleParts.primary}
+                      </span>
+                      {chatTitleParts.secondary && (
+                        <span className="mt-0.5 inline-flex max-w-full items-center truncate rounded-md border border-purple-500/30 bg-purple-500/15 px-1.5 py-px text-[10px] font-bold uppercase tracking-wider text-purple-200">
+                          {chatTitleParts.secondary}
+                        </span>
+                      )}
+                    </span>
                   </h1>
                 </div>
 
                 <div className="flex shrink-0 items-center gap-1">
-                  {usePresenceModeA && (
-                    <button
-                      type="button"
-                      onClick={() => setIsPlayersExpanded((v) => !v)}
-                      className={`flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors cursor-pointer ${
-                        isPlayersExpanded
-                          ? "bg-purple-600/20 text-purple-300"
-                          : "text-gray-400 hover:bg-[#141829] hover:text-white"
-                      }`}
-                      aria-label="Expand or collapse players list"
-                      aria-expanded={isPlayersExpanded}
-                    >
-                      <Users className="h-4 w-4" />
-                      <span className="text-emerald-400">{onlineCount}</span>
-                    </button>
-                  )}
-
-                  {!usePresenceModeA && (
-                    <div
-                      className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-gray-400"
-                      aria-label="Players online"
-                    >
-                      <Users className="h-4 w-4" />
-                      <span className="text-emerald-400">{onlineCount}</span>
-                    </div>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsPlayersExpanded((v) => !v)}
+                    className={`flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors cursor-pointer ${
+                      isPlayersExpanded
+                        ? "bg-purple-600/20 text-purple-300"
+                        : "text-gray-400 hover:bg-[#141829] hover:text-white"
+                    }`}
+                    aria-label="Show players list"
+                    aria-expanded={isPlayersExpanded}
+                  >
+                    <Users className="h-4 w-4" />
+                    <span className="text-emerald-400">{onlineCount}</span>
+                  </button>
 
                   <button
                     type="button"
@@ -237,82 +298,96 @@ export default function ChatPage() {
               </header>
 
               <div className="relative flex flex-1 flex-col overflow-hidden min-h-0">
-                {usePresenceModeA ? (
+                {isPlayersExpanded && (
                   <ConnectedPlayersBar
                     participants={activeChannel.participants}
                     isLobby={activeChannel.isLobby}
-                    expanded={isPlayersExpanded}
+                    expanded
                     onExpandedChange={setIsPlayersExpanded}
                   />
-                ) : (
-                  <ConnectedPlayersStrip participants={activeChannel.participants} />
                 )}
 
-                {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-[#0c0f1d]/20 to-transparent">
+                {/* Messages — recent window (last N), scroll to latest on open */}
+                <div
+                  ref={messagesContainerRef}
+                  className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-[#0c0f1d]/20 to-transparent"
+                >
                   {activeChannel.messages.length === 0 ? (
                     <div className="flex h-full items-center justify-center">
                       <p className="text-sm text-gray-500">No messages yet. Say GLHF!</p>
                     </div>
                   ) : (
-                    activeChannel.messages.map((msg) => {
-                      const isOwn = msg.senderId === "me"
+                    <>
+                      {hasOlderMessages && (
+                        <div className="flex justify-center pb-1">
+                          <button
+                            type="button"
+                            onClick={handleLoadEarlier}
+                            className="rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1 text-[11px] font-semibold text-purple-200 transition-colors hover:border-purple-400/50 hover:bg-purple-600/20 cursor-pointer"
+                          >
+                            Load earlier messages
+                          </button>
+                        </div>
+                      )}
+                      {visibleMessages.map((msg) => {
+                        const isOwn = msg.senderId === "me"
 
-                      if (msg.type === "system") {
+                        if (msg.type === "system") {
+                          return (
+                            <div key={msg.id} className="flex justify-center my-2">
+                              <span className="rounded-full border border-[#1f2942] bg-[#12162b]/60 px-3 py-1 text-[11px] text-gray-400">
+                                {msg.content}
+                              </span>
+                            </div>
+                          )
+                        }
+
                         return (
-                          <div key={msg.id} className="flex justify-center my-2">
-                            <span className="rounded-full border border-[#1f2942] bg-[#12162b]/60 px-3 py-1 text-[11px] text-gray-400">
-                              {msg.content}
-                            </span>
-                          </div>
-                        )
-                      }
-
-                      return (
-                        <div
-                          key={msg.id}
-                          className={`flex items-end gap-2 ${isOwn ? "justify-end" : "justify-start"}`}
-                        >
-                          {!isOwn && (
-                            <img
-                              src={msg.senderAvatarUrl}
-                              alt={msg.senderName}
-                              className="h-7 w-7 shrink-0 rounded-full ring-1 ring-purple-500/30 object-cover"
-                            />
-                          )}
                           <div
-                            className={`max-w-[75%] flex flex-col ${isOwn ? "items-end" : "items-start"}`}
+                            key={msg.id}
+                            className={`flex items-end gap-2 ${isOwn ? "justify-end" : "justify-start"}`}
                           >
                             {!isOwn && (
-                              <span className="mb-0.5 ml-1 text-[10px] font-medium text-gray-500">
-                                {msg.senderName}
-                              </span>
+                              <img
+                                src={msg.senderAvatarUrl}
+                                alt={msg.senderName}
+                                className="h-7 w-7 shrink-0 rounded-full ring-1 ring-purple-500/30 object-cover"
+                              />
                             )}
                             <div
-                              className={`rounded-2xl px-3.5 py-2 text-sm ${
-                                isOwn
-                                  ? "bg-purple-600 text-white rounded-br-sm"
-                                  : "border border-purple-500/25 bg-gray-900/70 text-gray-100 rounded-bl-sm"
-                              }`}
+                              className={`max-w-[75%] flex flex-col ${isOwn ? "items-end" : "items-start"}`}
                             >
-                              {msg.type === "image" ? (
-                                <div className="space-y-1.5">
-                                  <p>{msg.content}</p>
-                                  <img
-                                    src={msg.imageUrl}
-                                    alt="Attachment"
-                                    className="max-h-40 rounded-lg object-cover"
-                                  />
-                                </div>
-                              ) : (
-                                <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                              {!isOwn && (
+                                <span className="mb-0.5 ml-1 text-[10px] font-medium text-gray-500">
+                                  {msg.senderName}
+                                </span>
                               )}
+                              <div
+                                className={`rounded-2xl px-3.5 py-2 text-sm ${
+                                  isOwn
+                                    ? "bg-purple-600 text-white rounded-br-sm"
+                                    : "border border-purple-500/25 bg-gray-900/70 text-gray-100 rounded-bl-sm"
+                                }`}
+                              >
+                                {msg.type === "image" ? (
+                                  <div className="space-y-1.5">
+                                    <p>{msg.content}</p>
+                                    <img
+                                      src={msg.imageUrl}
+                                      alt="Attachment"
+                                      className="max-h-40 rounded-lg object-cover"
+                                    />
+                                  </div>
+                                ) : (
+                                  <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                                )}
+                              </div>
+                              <span className="mt-0.5 text-[9px] text-gray-600">{msg.timestamp}</span>
                             </div>
-                            <span className="mt-0.5 text-[9px] text-gray-600">{msg.timestamp}</span>
                           </div>
-                        </div>
-                      )
-                    })
+                        )
+                      })}
+                    </>
                   )}
                   <div ref={messagesEndRef} />
                 </div>
@@ -383,20 +458,25 @@ export default function ChatPage() {
                   <div className="lg:hidden absolute inset-0 z-40 flex justify-end bg-black/60 backdrop-blur-sm">
                     <div className="flex h-full w-72 flex-col border-l border-purple-500/20 bg-[#0c0f1d]">
                       <div className="shrink-0 border-b border-purple-500/20 px-4 py-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-bold tracking-wide text-white">
-                            Chats
-                          </span>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex min-w-0 items-center gap-2.5">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-900/40">
+                              <MessageSquare className="h-4 w-4" />
+                            </span>
+                            <span className="text-lg font-extrabold tracking-tight text-white">
+                              Chats
+                            </span>
+                          </div>
                           <button
                             type="button"
                             onClick={() => setIsNavigatorOpen(false)}
-                            className="rounded-lg p-1 text-gray-400 hover:bg-purple-500/10 hover:text-white cursor-pointer"
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-purple-500/10 hover:text-white cursor-pointer"
                             aria-label="Close chats"
                           >
                             <X className="h-5 w-5" />
                           </button>
                         </div>
-                        <div className="mt-2 h-0.5 w-full rounded-full bg-gradient-to-r from-purple-500 to-transparent" />
+                        <div className="mt-2.5 h-0.5 w-full rounded-full bg-gradient-to-r from-purple-500 to-transparent" />
                       </div>
                       <ChatNavigatorSidebar
                         tree={navigatorTree}
@@ -406,6 +486,7 @@ export default function ChatPage() {
                         onSelectChat={handleSelectChat}
                         onClose={() => setIsNavigatorOpen(false)}
                         hideHeader
+                        recentChats={recentChats}
                         className="flex-1 overflow-hidden"
                       />
                     </div>
@@ -421,6 +502,7 @@ export default function ChatPage() {
               expandedNodes={expandedNodes}
               onToggleNode={handleToggleNode}
               onSelectChat={handleSelectChat}
+              recentChats={recentChats}
               className="hidden lg:flex w-72 shrink-0 border-l border-purple-500/20 bg-[#0c0f1d]/40"
             />
           </div>
