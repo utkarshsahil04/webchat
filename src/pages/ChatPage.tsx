@@ -119,7 +119,6 @@ export default function ChatPage() {
   }, [activeChannelId, scrollToBottom])
 
   useEffect(() => {
-    // Only expand tournament + path to active chat (not every stage)
     setExpandedNodes(
       new Set(getAutoExpandNodeIds(mockTournamentChatTree, activeChannelId))
     )
@@ -191,108 +190,106 @@ export default function ChatPage() {
       <div className="flex flex-1 min-h-0 flex-col overflow-hidden pt-20 px-4 pb-4 md:px-6 md:pb-6">
         <div className="mx-auto flex w-full max-w-7xl flex-1 min-h-0 flex-col">
           <div className="flex min-h-0 flex-1 overflow-hidden rounded-xl border border-purple-500/20 bg-[#0c0f1d]/70 backdrop-blur-md shadow-2xl shadow-black/50">
-            {/* Chat column */}
             <div className="flex flex-1 flex-col overflow-hidden min-w-0">
-              {/* Chat header: Back to Tournament | chat title */}
               <header className="flex shrink-0 flex-col border-b border-purple-500/20 bg-[#0a0d18] px-3 md:px-4">
                 <div className="flex min-h-14 items-center justify-between gap-3 py-2">
-                <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-                  <button
-                    type="button"
-                    onClick={() => navigate("/")}
-                    className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-purple-500/30 bg-purple-500/10 px-2 text-sm font-semibold text-purple-200 transition-colors hover:border-purple-400/50 hover:bg-purple-600 hover:text-white cursor-pointer sm:px-3"
-                    aria-label="Back to Tournament"
-                  >
-                    <ArrowLeft className="h-4 w-4 shrink-0" />
-                    <span className="hidden sm:inline">Back to Tournament</span>
-                  </button>
-                  <h1 className="flex min-w-0 flex-1 items-center gap-2">
-                    <span
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                        chatTitleParts.isLobby
-                          ? "bg-purple-600/25 text-purple-300"
-                          : "bg-gradient-to-br from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-900/40"
-                      }`}
-                    >
-                      {chatTitleParts.isLobby ? (
-                        <Megaphone className="h-4 w-4" />
-                      ) : (
-                        <Swords className="h-4 w-4" />
-                      )}
-                    </span>
-                    <span className="min-w-0 truncate">
-                      <span className="block truncate text-base font-extrabold tracking-tight text-white sm:text-lg">
-                        {chatTitleParts.primary}
-                      </span>
-                      {chatTitleParts.secondary && (
-                        <span className="mt-0.5 inline-flex max-w-full items-center truncate rounded-md border border-purple-500/30 bg-purple-500/15 px-1.5 py-px text-[10px] font-bold uppercase tracking-wider text-purple-200">
-                          {chatTitleParts.secondary}
-                        </span>
-                      )}
-                    </span>
-                  </h1>
-                </div>
-
-                <div className="flex shrink-0 items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setIsPlayersExpanded((v) => !v)}
-                    className={`flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors cursor-pointer ${
-                      isPlayersExpanded
-                        ? "bg-purple-600/20 text-purple-300"
-                        : "text-gray-400 hover:bg-[#141829] hover:text-white"
-                    }`}
-                    aria-label="Show players list"
-                    aria-expanded={isPlayersExpanded}
-                  >
-                    <Users className="h-4 w-4" />
-                    <span className="text-emerald-400">{onlineCount}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setIsNavigatorOpen(true)}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-[#141829] hover:text-white lg:hidden cursor-pointer"
-                    aria-label="Open chat navigator"
-                  >
-                    <PanelRight className="h-4 w-4" />
-                  </button>
-
-                  <div className="relative">
+                  <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
                     <button
                       type="button"
-                      onClick={() => setActiveMenu(!activeMenu)}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-[#141829] hover:text-white cursor-pointer"
-                      aria-label="Chat options"
+                      onClick={() => navigate("/")}
+                      className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-purple-500/30 bg-purple-500/10 px-2 text-sm font-semibold text-purple-200 transition-colors hover:border-purple-400/50 hover:bg-purple-600 hover:text-white cursor-pointer sm:px-3"
+                      aria-label="Back to Tournament"
                     >
-                      <MoreVertical className="h-4 w-4" />
+                      <ArrowLeft className="h-4 w-4 shrink-0" />
+                      <span className="hidden sm:inline">Back to Tournament</span>
                     </button>
-                    {activeMenu && (
-                      <div className="absolute right-0 mt-1 w-44 rounded-lg border border-purple-500/20 bg-[#0c0f1d] py-1 shadow-2xl z-50">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActiveMenu(false)
-                            alert("Notifications muted for this chat.")
-                          }}
-                          className="w-full px-3 py-2 text-left text-xs hover:bg-[#141829] transition-colors"
-                        >
-                          Mute notifications
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActiveMenu(false)
-                            alert("Chat cleared locally.")
-                          }}
-                          className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-[#141829] transition-colors"
-                        >
-                          Clear chat
-                        </button>
-                      </div>
-                    )}
+                    <h1 className="flex min-w-0 flex-1 items-center gap-2">
+                      <span
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                          chatTitleParts.isLobby
+                            ? "bg-purple-600/25 text-purple-300"
+                            : "bg-gradient-to-br from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-900/40"
+                        }`}
+                      >
+                        {chatTitleParts.isLobby ? (
+                          <Megaphone className="h-4 w-4" />
+                        ) : (
+                          <Swords className="h-4 w-4" />
+                        )}
+                      </span>
+                      <span className="min-w-0 truncate">
+                        <span className="block truncate text-base font-extrabold tracking-tight text-white sm:text-lg">
+                          {chatTitleParts.primary}
+                        </span>
+                        {chatTitleParts.secondary && (
+                          <span className="mt-0.5 inline-flex max-w-full items-center truncate rounded-md border border-purple-500/30 bg-purple-500/15 px-1.5 py-px text-[10px] font-bold uppercase tracking-wider text-purple-200">
+                            {chatTitleParts.secondary}
+                          </span>
+                        )}
+                      </span>
+                    </h1>
                   </div>
-                </div>
+
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setIsPlayersExpanded((v) => !v)}
+                      className={`flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors cursor-pointer ${
+                        isPlayersExpanded
+                          ? "bg-purple-600/20 text-purple-300"
+                          : "text-gray-400 hover:bg-[#141829] hover:text-white"
+                      }`}
+                      aria-label="Show players list"
+                      aria-expanded={isPlayersExpanded}
+                    >
+                      <Users className="h-4 w-4" />
+                      <span className="text-emerald-400">{onlineCount}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsNavigatorOpen(true)}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-[#141829] hover:text-white lg:hidden cursor-pointer"
+                      aria-label="Open chat navigator"
+                    >
+                      <PanelRight className="h-4 w-4" />
+                    </button>
+
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setActiveMenu(!activeMenu)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-[#141829] hover:text-white cursor-pointer"
+                        aria-label="Chat options"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </button>
+                      {activeMenu && (
+                        <div className="absolute right-0 mt-1 w-44 rounded-lg border border-purple-500/20 bg-[#0c0f1d] py-1 shadow-2xl z-50">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveMenu(false)
+                              alert("Notifications muted for this chat.")
+                            }}
+                            className="w-full px-3 py-2 text-left text-xs hover:bg-[#141829] transition-colors"
+                          >
+                            Mute notifications
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveMenu(false)
+                              alert("Chat cleared locally.")
+                            }}
+                            className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-[#141829] transition-colors"
+                          >
+                            Clear chat
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 <div className="h-0.5 w-full rounded-full bg-gradient-to-r from-purple-500 to-transparent" />
               </header>
@@ -307,7 +304,6 @@ export default function ChatPage() {
                   />
                 )}
 
-                {/* Messages — recent window (last N), scroll to latest on open */}
                 <div
                   ref={messagesContainerRef}
                   className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-[#0c0f1d]/20 to-transparent"
@@ -392,7 +388,6 @@ export default function ChatPage() {
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* Input */}
                 <div className="shrink-0 border-t border-purple-500/20 bg-[#0c0f1d]/50 p-3">
                   {showQuickReplies && (
                     <div className="mb-2 flex gap-1.5">
@@ -453,7 +448,6 @@ export default function ChatPage() {
                   </div>
                 </div>
 
-                {/* Mobile navigator drawer */}
                 {isNavigatorOpen && (
                   <div className="lg:hidden absolute inset-0 z-40 flex justify-end bg-black/60 backdrop-blur-sm">
                     <div className="flex h-full w-72 flex-col border-l border-purple-500/20 bg-[#0c0f1d]">
@@ -495,7 +489,6 @@ export default function ChatPage() {
               </div>
             </div>
 
-            {/* Desktop navigator */}
             <ChatNavigatorSidebar
               tree={navigatorTree}
               activeChatId={activeChannelId}

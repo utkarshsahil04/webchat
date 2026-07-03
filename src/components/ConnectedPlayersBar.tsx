@@ -80,7 +80,6 @@ export default function ConnectedPlayersBar({
 
   return (
     <>
-      {/* Dim messages behind the panel */}
       <button
         type="button"
         className="absolute inset-0 z-20 bg-black/50 backdrop-blur-[2px] cursor-default"

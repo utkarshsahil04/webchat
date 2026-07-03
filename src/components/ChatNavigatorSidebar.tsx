@@ -102,12 +102,10 @@ export default function ChatNavigatorSidebar({
   const isTournamentExpanded = expandedNodes.has(tree.tournamentId)
   const isLobbyActive = activeChatId === tree.lobbyChatId
 
-  // Switch to Recent when opening a messaged chat, or after first send in a room
   useEffect(() => {
     if (recentChats.some((c) => c.chatId === activeChatId)) {
       setNavTab("recent")
     }
-    // recentChats.length: first send adds a room; activeChatId: open another recent chat
     // eslint-disable-next-line react-hooks/exhaustive-deps -- avoid fighting manual Tournament tab
   }, [activeChatId, recentChats.length])
 
@@ -130,7 +128,6 @@ export default function ChatNavigatorSidebar({
         </div>
       )}
 
-      {/* Subheaders: Recent | Tournament */}
       <div className="shrink-0 border-b border-purple-500/20 px-3 py-2">
         <div className="flex gap-1.5 rounded-xl border border-purple-500/20 bg-gray-900/50 p-1">
           <button
