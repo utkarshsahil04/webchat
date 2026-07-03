@@ -11,6 +11,7 @@ import {
   Swords,
   Megaphone,
   MessageSquare,
+  Minimize2,
 } from "lucide-react"
 import { mockChats } from "../data/mockChatData"
 import { currentUser } from "../data/tournamentPlayers"
@@ -234,6 +235,24 @@ export default function ChatPage() {
                 </div>
 
                 <div className="flex shrink-0 items-center gap-1">
+                  {/* Desktop: minimize to Messenger popup on tournament page */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigate("/", {
+                        state: {
+                          openChatPopup: true,
+                          activeChannelId,
+                        },
+                      })
+                    }}
+                    className="hidden md:flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-purple-500/10 hover:text-white cursor-pointer"
+                    aria-label="Minimize to chat popup"
+                    title="Minimize"
+                  >
+                    <Minimize2 className="h-4 w-4" />
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => setIsPlayersExpanded((v) => !v)}

@@ -33,6 +33,8 @@ type PanelView = "list" | "conversation"
 interface FloatingChatWidgetProps {
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  /** Open directly into this conversation (e.g. after minimize from full page) */
+  initialChannelId?: string
 }
 
 function initialNavigatorTree(): TournamentChatTree {
@@ -45,6 +47,7 @@ function initialNavigatorTree(): TournamentChatTree {
 export default function FloatingChatWidget({
   open: controlledOpen,
   onOpenChange,
+  initialChannelId,
 }: FloatingChatWidgetProps) {
   const navigate = useNavigate()
   const isControlled = controlledOpen !== undefined
@@ -59,6 +62,17 @@ export default function FloatingChatWidget({
   const [view, setView] = useState<PanelView>("list")
   const [channels, setChannels] = useState<ChatChannel[]>(mockChats)
   const [activeChannelId, setActiveChannelId] = useState("tournament")
+
+  // When opened via minimize from full chat, land on that conversation
+  useEffect(() => {
+    if (!isOpen) return
+    if (initialChannelId) {
+      setActiveChannelId(initialChannelId)
+      setView("conversation")
+    } else {
+      setView("list")
+    }
+  }, [isOpen, initialChannelId])
   const [navigatorTree, setNavigatorTree] = useState(initialNavigatorTree)
   const [inputText, setInputText] = useState("")
   const [expandedNodes, setExpandedNodes] = useState(

@@ -1,5 +1,11 @@
-import { useState } from "react"
-import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom"
+import { useState, useEffect } from "react"
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  useNavigate,
+  useLocation,
+} from "react-router-dom"
 import Header from "./components/Header"
 import TournamentHeader from "./components/TournamentHeader"
 import TournamentTabs from "./components/TournamentTabs"
@@ -10,26 +16,45 @@ import "./App.css"
 
 function TournamentPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const isDesktop = useIsDesktop()
   const [chatOpen, setChatOpen] = useState(false)
+  const [popupChannelId, setPopupChannelId] = useState<string | undefined>()
 
-  const openChat = () => {
-    if (isDesktop) setChatOpen(true)
-    else navigate("/chat")
-  }
+  // Full chat page minimize → open Messenger popup (desktop only)
+  useEffect(() => {
+    const state = location.state as {
+      openChatPopup?: boolean
+      activeChannelId?: string
+    } | null
+    if (!state?.openChatPopup) return
+
+    if (isDesktop) {
+      setPopupChannelId(state.activeChannelId)
+      setChatOpen(true)
+    }
+    navigate(".", { replace: true, state: {} })
+  }, [location.state, isDesktop, navigate])
 
   return (
     <div className="min-h-screen bg-[#080a12] text-white pt-16 pb-16 md:pb-0">
       <Header />
 
       <main className="mx-auto max-w-7xl pb-16">
-        <TournamentHeader onOpenChat={openChat} />
+        <TournamentHeader onOpenChat={() => navigate("/chat")} />
         <TournamentTabs />
       </main>
 
-      {/* Messenger popup only on desktop — mobile uses full /chat page */}
+      {/* Popup only on desktop (after minimize from full chat, or FAB) */}
       {isDesktop && (
-        <FloatingChatWidget open={chatOpen} onOpenChange={setChatOpen} />
+        <FloatingChatWidget
+          open={chatOpen}
+          onOpenChange={(open) => {
+            setChatOpen(open)
+            if (!open) setPopupChannelId(undefined)
+          }}
+          initialChannelId={popupChannelId}
+        />
       )}
     </div>
   )

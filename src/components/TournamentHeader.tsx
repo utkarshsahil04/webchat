@@ -118,7 +118,7 @@ export default function TournamentHeader({ onOpenChat }: TournamentHeaderProps) 
         </button>
       </div>
 
-      {/* Tournament Chat — opens Messenger-style popup */}
+      {/* Tournament Chat — always opens full chat page */}
       <div className="mb-8">
         <button
           type="button"
@@ -135,7 +135,7 @@ export default function TournamentHeader({ onOpenChat }: TournamentHeaderProps) 
             </span>
           </div>
           <p className="mt-1 pl-7 text-xs text-gray-400 group-hover:text-gray-300 transition-colors">
-            Chat with registered players
+            Open full chat — minimize on desktop for a popup
           </p>
         </button>
       </div>
