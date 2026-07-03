@@ -16,6 +16,7 @@ import {
   getVisibleNavigatorTree,
   findChatPath,
   getAutoExpandNodeIds,
+  clearUnreadForChat,
 } from "../data/chatNavigatorMock"
 import ConnectedPlayersBar from "../components/ConnectedPlayersBar"
 import ConnectedPlayersStrip from "../components/ConnectedPlayersStrip"
@@ -26,37 +27,37 @@ import {
   isChatPresenceModeA,
   shouldDefaultExpandPlayers,
 } from "../config/chatPresenceUi"
-import type { ChatChannel, Message } from "../types/chat"
+import type { ChatChannel, Message, TournamentChatTree } from "../types/chat"
 
-const visibleTree = getVisibleNavigatorTree(mockTournamentChatTree)
+const INITIAL_CHANNEL_ID = "tournament"
 const QUICK_REPLIES = ["GG", "WP", "GLHF"]
 const usePresenceModeA = isChatPresenceModeA()
 
-function loadExpandedNodes(): Set<string> {
-  try {
-    const stored = localStorage.getItem("chat-nav-expanded")
-    if (stored) return new Set(JSON.parse(stored) as string[])
-  } catch {
-    // ignore
-  }
-  return new Set([mockTournamentChatTree.tournamentId])
+function initialNavigatorTree(): TournamentChatTree {
+  return clearUnreadForChat(
+    getVisibleNavigatorTree(mockTournamentChatTree),
+    INITIAL_CHANNEL_ID
+  )
 }
 
 export default function ChatPage() {
   const navigate = useNavigate()
   const [channels, setChannels] = useState<ChatChannel[]>(mockChats)
-  const [activeChannelId, setActiveChannelId] = useState<string>("tournament")
+  const [activeChannelId, setActiveChannelId] = useState<string>(INITIAL_CHANNEL_ID)
+  const [navigatorTree, setNavigatorTree] = useState<TournamentChatTree>(initialNavigatorTree)
   const [inputText, setInputText] = useState<string>("")
   const [isNavigatorOpen, setIsNavigatorOpen] = useState<boolean>(false)
   const [isPlayersExpanded, setIsPlayersExpanded] = useState<boolean>(() =>
     shouldDefaultExpandPlayers(
-      mockChats.find((c) => c.id === "tournament")?.isLobby ?? true,
-      mockChats.find((c) => c.id === "tournament")?.participants.length ?? 0
+      mockChats.find((c) => c.id === INITIAL_CHANNEL_ID)?.isLobby ?? true,
+      mockChats.find((c) => c.id === INITIAL_CHANNEL_ID)?.participants.length ?? 0
     )
   )
   const [showQuickReplies, setShowQuickReplies] = useState<boolean>(false)
   const [activeMenu, setActiveMenu] = useState<boolean>(false)
-  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(loadExpandedNodes)
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(
+    () => new Set(getAutoExpandNodeIds(mockTournamentChatTree, INITIAL_CHANNEL_ID))
+  )
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -80,12 +81,11 @@ export default function ChatPage() {
   }, [activeChannelId, activeChannel.messages])
 
   useEffect(() => {
-    const autoIds = getAutoExpandNodeIds(mockTournamentChatTree, activeChannelId)
-    setExpandedNodes((prev) => {
-      const next = new Set(prev)
-      autoIds.forEach((id) => next.add(id))
-      return next
-    })
+    // Only expand tournament + path to active chat (not every stage)
+    setExpandedNodes(
+      new Set(getAutoExpandNodeIds(mockTournamentChatTree, activeChannelId))
+    )
+    setNavigatorTree((prev) => clearUnreadForChat(prev, activeChannelId))
     setIsPlayersExpanded(
       shouldDefaultExpandPlayers(
         activeChannel.isLobby ?? false,
@@ -93,10 +93,6 @@ export default function ChatPage() {
       )
     )
   }, [activeChannelId, activeChannel.isLobby, activeChannel.participants.length])
-
-  useEffect(() => {
-    localStorage.setItem("chat-nav-expanded", JSON.stringify([...expandedNodes]))
-  }, [expandedNodes])
 
   const handleToggleNode = useCallback((nodeId: string) => {
     setExpandedNodes((prev) => {
@@ -385,19 +381,25 @@ export default function ChatPage() {
                 {/* Mobile navigator drawer */}
                 {isNavigatorOpen && (
                   <div className="lg:hidden absolute inset-0 z-40 flex justify-end bg-black/60 backdrop-blur-sm">
-                    <div className="flex h-full w-72 flex-col border-l border-[#1f2538] bg-[#0c0f1d]">
-                      <div className="flex items-center justify-between border-b border-[#1f2538] px-4 py-3">
-                        <span className="text-sm font-bold text-white">Chats</span>
-                        <button
-                          type="button"
-                          onClick={() => setIsNavigatorOpen(false)}
-                          className="rounded-lg p-1 text-gray-400 hover:bg-[#12162b] hover:text-white cursor-pointer"
-                        >
-                          <X className="h-5 w-5" />
-                        </button>
+                    <div className="flex h-full w-72 flex-col border-l border-purple-500/20 bg-[#0c0f1d]">
+                      <div className="shrink-0 border-b border-purple-500/20 px-4 py-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-bold tracking-wide text-white">
+                            Chats
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setIsNavigatorOpen(false)}
+                            className="rounded-lg p-1 text-gray-400 hover:bg-purple-500/10 hover:text-white cursor-pointer"
+                            aria-label="Close chats"
+                          >
+                            <X className="h-5 w-5" />
+                          </button>
+                        </div>
+                        <div className="mt-2 h-0.5 w-full rounded-full bg-gradient-to-r from-purple-500 to-transparent" />
                       </div>
                       <ChatNavigatorSidebar
-                        tree={visibleTree}
+                        tree={navigatorTree}
                         activeChatId={activeChannelId}
                         expandedNodes={expandedNodes}
                         onToggleNode={handleToggleNode}
@@ -414,12 +416,12 @@ export default function ChatPage() {
 
             {/* Desktop navigator */}
             <ChatNavigatorSidebar
-              tree={visibleTree}
+              tree={navigatorTree}
               activeChatId={activeChannelId}
               expandedNodes={expandedNodes}
               onToggleNode={handleToggleNode}
               onSelectChat={handleSelectChat}
-              className="hidden lg:flex w-72 shrink-0 border-l border-[#1f2538]/80 bg-[#0c0f1d]/40"
+              className="hidden lg:flex w-72 shrink-0 border-l border-purple-500/20 bg-[#0c0f1d]/40"
             />
           </div>
         </div>
