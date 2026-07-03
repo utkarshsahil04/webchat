@@ -149,17 +149,19 @@ export default function ChatPage() {
               {/* Chat header: Back to Tournament | chat title */}
               <header className="flex shrink-0 flex-col border-b border-purple-500/20 bg-[#0a0d18] px-3 md:px-4">
                 <div className="flex h-14 items-center justify-between gap-3">
-                <div className="flex min-w-0 flex-1 items-center gap-3">
+                <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
                   <button
                     type="button"
                     onClick={() => navigate("/")}
-                    className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-purple-500/30 bg-purple-500/10 px-3 text-sm font-semibold text-purple-200 transition-colors hover:border-purple-400/50 hover:bg-purple-600 hover:text-white cursor-pointer"
+                    className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-purple-500/30 bg-purple-500/10 px-2 text-sm font-semibold text-purple-200 transition-colors hover:border-purple-400/50 hover:bg-purple-600 hover:text-white cursor-pointer sm:px-3"
                     aria-label="Back to Tournament"
                   >
                     <ArrowLeft className="h-4 w-4 shrink-0" />
-                    Back to Tournament
+                    <span className="hidden sm:inline">Back to Tournament</span>
                   </button>
-                  <h1 className="truncate text-base font-semibold text-white">{chatTitle}</h1>
+                  <h1 className="min-w-0 flex-1 truncate text-sm font-semibold text-white sm:text-base">
+                    {chatTitle}
+                  </h1>
                 </div>
 
                 <div className="flex shrink-0 items-center gap-1">
