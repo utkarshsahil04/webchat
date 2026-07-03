@@ -1,8 +1,10 @@
-import { useNavigate } from "react-router-dom"
 import { Trophy, Coins, Clock, Users } from "lucide-react"
 
-export default function TournamentHeader() {
-  const navigate = useNavigate()
+interface TournamentHeaderProps {
+  onOpenChat?: () => void
+}
+
+export default function TournamentHeader({ onOpenChat }: TournamentHeaderProps) {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 text-left">
@@ -32,7 +34,7 @@ export default function TournamentHeader() {
       {/* Main Title & Subtitle */}
       <div className="mb-6">
         <h1 className="text-4xl font-extrabold tracking-tight text-white md:text-5xl lg:text-6xl mb-2">
-          DemonlLord
+        DemonlLord
         </h1>
         <p className="text-sm font-medium text-gray-400">
           fffffffffffffffffffff
@@ -116,10 +118,11 @@ export default function TournamentHeader() {
         </button>
       </div>
 
-      {/* Tournament Chat Section (IMPORTANT USER REQUIREMENT) */}
+      {/* Tournament Chat — opens Messenger-style popup */}
       <div className="mb-8">
         <button
-          onClick={() => navigate("/chat")}
+          type="button"
+          onClick={() => onOpenChat?.()}
           className="group relative flex w-full flex-col justify-center rounded-xl border border-purple-500/40 bg-gradient-to-r from-[#20133a] via-[#150d28] to-[#120822] p-5 text-left transition-all hover:scale-[1.01] hover:border-purple-400 hover:shadow-lg hover:shadow-purple-500/10 cursor-pointer"
         >
           <div className="flex items-center gap-2.5">
